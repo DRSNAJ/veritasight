@@ -1,0 +1,80 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// READ-ONLY: Existing table - do not modify via Prisma migrations
+model ticker_raw_data {
+  id               Int       @id @default(autoincrement())
+  timecreated      DateTime?
+  ticker_id        String?
+  symbol           String?
+  name             String?
+  isin             String?
+  lasttradedprice  Decimal?
+  previousclose    Decimal?
+  change           Decimal?
+  changepercentage Decimal?
+  marketcap        Decimal?
+  wtdhiprice       Decimal?
+  mtdhiprice       Decimal?
+  ytdhiprice       Decimal?
+  wtdlowprice      Decimal?
+  mtdlowprice      Decimal?
+  ytdlowprice      Decimal?
+  tdysharevolume   BigInt?
+  wtdturnover      Decimal?
+
+  @@map("ticker_raw_data")
+}
+
+// READ-ONLY: Existing table - do not modify via Prisma migrations
+model index_raw_data {
+  id          Int       @id @default(autoincrement())
+  ticker_id   String?
+  ticker      String?
+  value       Decimal?
+  change      Decimal?
+  percentage  Decimal?
+  highvalue   Decimal?
+  lowvalue    Decimal?
+  timestamp   DateTime?
+  timecreated DateTime? @map("timeCreated")
+
+  @@map("index_raw_data")
+}
+
+// WRITABLE: User portfolio holdings
+model portfolio_holdings {
+  id          Int      @id @default(autoincrement())
+  symbol      String   @unique
+  shares_held Int      @default(0)
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  @@map("portfolio_holdings")
+}
+
+// WRITABLE: Manual assets (FD, bonds, cash, other)
+model manual_assets {
+  id         Int       @id @default(autoincrement())
+  name       String
+  type       AssetType
+  value      Decimal
+  notes      String?
+  created_at DateTime  @default(now())
+  updated_at DateTime  @updatedAt
+
+  @@map("manual_assets")
+}
+
+enum AssetType {
+  FD
+  BOND
+  CASH
+  OTHER
+}
