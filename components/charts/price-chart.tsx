@@ -1,10 +1,25 @@
 "use client";
 
-import { useEffect, useRef, useState, useMemo } from "react";
-import { createChart, IChartApi, ISeriesApi } from "lightweight-charts";
+import { useState, useMemo, useEffect } from "react";
+import {
+  ComposedChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+} from "recharts";
 import type { Holding, StockData } from "@/lib/types";
 import { useChartData } from "@/hooks/use-chart-data";
-import { normalizeToBase100, getSeriesColor, getDateRange, formatChartDate } from "@/lib/chart-utils";
+import {
+  transformToRechartsFormat,
+  getSeriesColor,
+  getDateRange,
+  formatChartDate,
+  formatXAxis,
+  formatYAxis,
+} from "@/lib/chart-utils";
 import { Card, Button, Spinner } from "@/components/ui";
 
 interface PriceChartProps {
@@ -14,11 +29,32 @@ interface PriceChartProps {
 
 type TimeRange = "WTD" | "MTD" | "YTD";
 
-export function PriceChart({ holdings, stocks }: PriceChartProps) {
-  const chartContainerRef = useRef<HTMLDivElement>(null);
-  const chartRef = useRef<IChartApi | null>(null);
-  const seriesRef = useRef<Map<string, ISeriesApi<"Line">>>(new Map());
+// Custom tooltip component with dark theme
+function CustomTooltip({ active, payload, label }: any) {
+  if (!active || !payload || payload.length === 0) return null;
 
+  return (
+    <div className="bg-tertiary border border-border-subtle rounded-lg p-3 shadow-lg">
+      <p className="text-xs text-text-muted mb-2">{formatXAxis(label)}</p>
+      {payload.map((entry: any, index: number) => (
+        <div key={index} className="flex items-center justify-between gap-4 text-xs">
+          <span className="flex items-center gap-2">
+            <div
+              className="w-2 h-2 rounded-full"
+              style={{ backgroundColor: entry.color }}
+            />
+            <span className="text-text-secondary">{entry.name}</span>
+          </span>
+          <span className="font-mono text-text-primary">
+            {typeof entry.value === "number" ? `LKR ${entry.value.toFixed(2)}` : entry.value}
+          </span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+export function PriceChart({ holdings, stocks }: PriceChartProps) {
   const [timeRange, setTimeRange] = useState<TimeRange>("MTD");
   const [normalize, setNormalize] = useState(false);
   const [visibleSymbols, setVisibleSymbols] = useState<Set<string>>(new Set());
@@ -33,99 +69,18 @@ export function PriceChart({ holdings, stocks }: PriceChartProps) {
     formatChartDate(to)
   );
 
-  // Initialize visible symbols
+  // Initialize visible symbols (first 3 by default)
   useEffect(() => {
     if (symbols.length > 0 && visibleSymbols.size === 0) {
       setVisibleSymbols(new Set(symbols.slice(0, 3)));
     }
   }, [symbols, visibleSymbols.size]);
 
-  // Create chart
-  useEffect(() => {
-    if (!chartContainerRef.current) return;
-
-    const chart = createChart(chartContainerRef.current, {
-      width: chartContainerRef.current.clientWidth,
-      height: 300,
-      layout: {
-        background: { color: "#1A1A1A" },
-        textColor: "#A0A0A0",
-      },
-      grid: {
-        vertLines: { visible: false },
-        horzLines: { color: "#2A2A2A" },
-      },
-      rightPriceScale: {
-        borderColor: "#333333",
-      },
-      timeScale: {
-        borderColor: "#333333",
-      },
-    });
-
-    chartRef.current = chart;
-
-    const handleResize = () => {
-      if (chartContainerRef.current) {
-        chart.applyOptions({ width: chartContainerRef.current.clientWidth });
-      }
-    };
-
-    window.addEventListener("resize", handleResize);
-
-    return () => {
-      window.removeEventListener("resize", handleResize);
-      chart.remove();
-      chartRef.current = null;
-      seriesRef.current.clear();
-    };
-  }, []);
-
-  // Update series data
-  useEffect(() => {
-    const chart = chartRef.current;
-    if (!chart) return;
-
-    // Remove old series
-    for (const [symbol, series] of seriesRef.current) {
-      if (!visibleSymbols.has(symbol)) {
-        chart.removeSeries(series);
-        seriesRef.current.delete(symbol);
-      }
-    }
-
-    // Add/update visible series
-    let colorIndex = 0;
-    for (const symbol of visibleSymbols) {
-      let seriesData = data[symbol] || [];
-
-      if (normalize && seriesData.length > 0) {
-        seriesData = normalizeToBase100(seriesData);
-      }
-
-      const formattedData = seriesData.map((d) => ({
-        time: d.time as string,
-        value: d.value,
-      }));
-
-      let series = seriesRef.current.get(symbol);
-      if (!series) {
-        series = chart.addLineSeries({
-          color: getSeriesColor(colorIndex),
-          lineWidth: 2,
-          title: symbol,
-        });
-        seriesRef.current.set(symbol, series);
-      }
-
-      if (formattedData.length > 0) {
-        series.setData(formattedData);
-      }
-      colorIndex++;
-    }
-
-    chart.timeScale().fitContent();
-  }, [data, visibleSymbols, normalize]);
+  // Transform data for Recharts
+  const chartData = useMemo(() => {
+    if (Object.keys(data).length === 0) return [];
+    return transformToRechartsFormat(data, normalize);
+  }, [data, normalize]);
 
   function toggleSymbol(symbol: string) {
     const newVisible = new Set(visibleSymbols);
@@ -158,7 +113,7 @@ export function PriceChart({ holdings, stocks }: PriceChartProps) {
               <button
                 key={range}
                 onClick={() => setTimeRange(range)}
-                className={`px-2 py-1 text-xs rounded ${
+                className={`px-2 py-1 text-xs rounded transition-colors duration-150 ${
                   timeRange === range
                     ? "bg-tertiary text-text-primary"
                     : "text-text-muted hover:text-text-secondary"
@@ -183,16 +138,21 @@ export function PriceChart({ holdings, stocks }: PriceChartProps) {
         {symbols.map((symbol, i) => {
           const stock = stockMap.get(symbol);
           const isVisible = visibleSymbols.has(symbol);
+          const color = getSeriesColor(i);
           return (
             <button
               key={symbol}
               onClick={() => toggleSymbol(symbol)}
-              className={`px-2 py-1 text-xs rounded border transition-colors ${
+              className={`px-2 py-1 text-xs rounded border transition-all duration-150 ${
                 isVisible
-                  ? "border-veritasight-blue bg-veritasight-blue/10 text-veritasight-blue"
-                  : "border-border-subtle text-text-muted hover:border-border-prominent"
+                  ? "bg-veritasight-blue/10 text-veritasight-blue"
+                  : "border-border-subtle text-text-muted hover:border-border-prominent hover:text-text-secondary"
               }`}
-              style={isVisible ? { borderColor: getSeriesColor(i) } : undefined}
+              style={
+                isVisible
+                  ? { borderColor: color, color: color }
+                  : undefined
+              }
             >
               {stock?.symbol || symbol}
             </button>
@@ -203,11 +163,68 @@ export function PriceChart({ holdings, stocks }: PriceChartProps) {
       {/* Chart */}
       <div className="relative">
         {loading && (
-          <div className="absolute inset-0 flex items-center justify-center bg-secondary/80 z-10">
+          <div className="absolute inset-0 flex items-center justify-center bg-secondary/80 z-10 rounded-lg">
             <Spinner />
           </div>
         )}
-        <div ref={chartContainerRef} className="w-full" />
+        <ResponsiveContainer width="100%" height={300}>
+          <ComposedChart
+            data={chartData}
+            margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
+          >
+            <defs>
+              {Array.from(visibleSymbols).map((symbol, i) => (
+                <linearGradient key={symbol} id={`gradient-${symbol}`} x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor={getSeriesColor(i)} stopOpacity={0.1} />
+                  <stop offset="95%" stopColor={getSeriesColor(i)} stopOpacity={0} />
+                </linearGradient>
+              ))}
+            </defs>
+
+            {/* Grid - horizontal only, Linear-style */}
+            <CartesianGrid
+              strokeDasharray="0"
+              stroke="#1A1A1A"
+              vertical={false}
+            />
+
+            {/* Axes */}
+            <XAxis
+              dataKey="time"
+              tickFormatter={formatXAxis}
+              stroke="#666666"
+              tick={{ fill: "#666666", fontSize: 11 }}
+              tickLine={false}
+              axisLine={{ stroke: "#333333" }}
+            />
+            <YAxis
+              domain={['auto', 'auto']}
+              tickFormatter={formatYAxis}
+              stroke="#666666"
+              tick={{ fill: "#666666", fontSize: 11, fontFamily: "JetBrains Mono" }}
+              tickLine={false}
+              axisLine={{ stroke: "#333333" }}
+            />
+
+            {/* Tooltip */}
+            <Tooltip content={<CustomTooltip />} cursor={{ stroke: "#444444", strokeWidth: 1 }} />
+
+            {/* Lines for visible symbols */}
+            {Array.from(visibleSymbols).map((symbol, i) => (
+              <Line
+                key={symbol}
+                type="monotone"
+                dataKey={symbol}
+                stroke={getSeriesColor(i)}
+                strokeWidth={2}
+                dot={false}
+                activeDot={{ r: 4, fill: getSeriesColor(i) }}
+                animationDuration={300}
+                animationEasing="ease-out"
+              />
+            ))}
+          </ComposedChart>
+        </ResponsiveContainer>
       </div>
     </Card>
   );

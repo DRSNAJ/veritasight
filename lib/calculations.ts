@@ -57,6 +57,27 @@ export function calculatePortfolioTotals(
   };
 }
 
+// Color palette for allocation segments - distinct colors for visibility
+const ALLOCATION_COLORS = [
+  "#4C9FFF", // Blue
+  "#10B981", // Green
+  "#FFB800", // Amber
+  "#F97316", // Orange
+  "#8B5CF6", // Purple
+  "#EC4899", // Pink
+  "#06B6D4", // Cyan
+  "#EF4444", // Red
+  "#84CC16", // Lime
+  "#F59E0B", // Yellow
+  "#6366F1", // Indigo
+  "#14B8A6", // Teal
+  "#A855F7", // Violet
+  "#22C55E", // Emerald
+  "#FB923C", // Light Orange
+  "#A0A0A0", // Gray
+  "#666666", // Dark Gray
+];
+
 export function calculateAllocation(
   holdings: Holding[],
   stocks: StockData[],
@@ -74,7 +95,7 @@ export function calculateAllocation(
         label: stock.symbol,
         value,
         percentage: 0, // calculated below
-        color: "#4C9FFF",
+        color: "", // assigned after sorting
         type: "equity",
       });
     }
@@ -87,30 +108,40 @@ export function calculateAllocation(
     assetsByType.set(asset.type, current + asset.value);
   }
 
-  const typeColors: Record<string, string> = {
-    FD: "#10B981",
-    BOND: "#FFB800",
-    CASH: "#A0A0A0",
-    OTHER: "#666666",
-  };
-
   for (const [type, value] of assetsByType) {
     segments.push({
       label: type,
       value,
       percentage: 0,
-      color: typeColors[type] || "#666666",
+      color: "", // assigned after sorting
       type: "manual",
     });
   }
 
-  // Calculate percentages
-  const total = segments.reduce((sum, s) => sum + s.value, 0);
-  for (const segment of segments) {
-    segment.percentage = total > 0 ? (segment.value / total) * 100 : 0;
+  // Sort by value (largest first)
+  const sorted = segments.sort((a, b) => b.value - a.value);
+
+  // Assign distinct colors after sorting
+  for (let i = 0; i < sorted.length; i++) {
+    sorted[i].color = ALLOCATION_COLORS[i % ALLOCATION_COLORS.length];
   }
 
-  return segments.sort((a, b) => b.value - a.value);
+  // Calculate percentages - ensures they sum to 100%
+  const total = sorted.reduce((sum, s) => sum + s.value, 0);
+  if (total > 0) {
+    let percentageSum = 0;
+    for (let i = 0; i < sorted.length; i++) {
+      if (i === sorted.length - 1) {
+        // Last segment gets remainder to ensure exact 100%
+        sorted[i].percentage = 100 - percentageSum;
+      } else {
+        sorted[i].percentage = (sorted[i].value / total) * 100;
+        percentageSum += sorted[i].percentage;
+      }
+    }
+  }
+
+  return sorted;
 }
 
 export function formatCurrency(value: number): string {

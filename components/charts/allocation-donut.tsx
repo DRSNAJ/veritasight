@@ -42,12 +42,14 @@ export function AllocationDonut({ holdings, stocks, assets }: AllocationDonutPro
     const percent = segment.percentage / 100;
     const offset = circumference * (1 - cumulativePercent);
     const dashLength = circumference * percent;
+    const gapLength = circumference - dashLength;
     cumulativePercent += percent;
 
     return {
       ...segment,
       offset,
       dashLength,
+      gapLength,
     };
   });
 
@@ -68,7 +70,7 @@ export function AllocationDonut({ holdings, stocks, assets }: AllocationDonutPro
                 fill="none"
                 stroke={path.color}
                 strokeWidth={strokeWidth}
-                strokeDasharray={`${path.dashLength} ${circumference}`}
+                strokeDasharray={`${path.dashLength} ${path.gapLength}`}
                 strokeDashoffset={path.offset}
                 className="transition-all duration-300"
               />

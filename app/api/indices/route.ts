@@ -15,7 +15,7 @@ export async function GET() {
         highvalue::float as highvalue,
         lowvalue::float as lowvalue
       FROM index_raw_data
-      WHERE ticker IN ('ASPI', 'S&P SL20')
+      WHERE ticker IN ('aspi', 'sl20')
       ORDER BY ticker, "timeCreated" DESC
     `;
 

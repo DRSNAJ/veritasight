@@ -46,7 +46,7 @@ export function getDateRange(range: "WTD" | "MTD" | "YTD"): { from: Date; to: Da
   return { from, to };
 }
 
-// Default colors for chart series
+// Recharts color palette
 export const CHART_COLORS = [
   "#4C9FFF", // Veritasight Blue
   "#10B981", // Gain green
@@ -60,4 +60,51 @@ export const CHART_COLORS = [
 
 export function getSeriesColor(index: number): string {
   return CHART_COLORS[index % CHART_COLORS.length];
+}
+
+// NEW: Transform data from Record<string, ChartDataPoint[]> to Recharts format
+export function transformToRechartsFormat(
+  data: Record<string, ChartDataPoint[]>,
+  normalize: boolean = false
+): Array<Record<string, number | string>> {
+  const dateMap = new Map<string, Record<string, number | string>>();
+
+  // First pass: Normalize if needed
+  const processedData: Record<string, ChartDataPoint[]> = {};
+  for (const [symbol, points] of Object.entries(data)) {
+    processedData[symbol] = normalize ? normalizeToBase100(points) : points;
+  }
+
+  // Second pass: Transform to Recharts format
+  for (const [symbol, points] of Object.entries(processedData)) {
+    for (const point of points) {
+      if (!dateMap.has(point.time)) {
+        dateMap.set(point.time, { time: point.time });
+      }
+      const entry = dateMap.get(point.time)!;
+      entry[symbol] = point.value;
+    }
+  }
+
+  return Array.from(dateMap.values()).sort((a, b) =>
+    (a.time as string).localeCompare(b.time as string)
+  );
+}
+
+// Format axis labels
+export function formatXAxis(value: string): string {
+  const date = new Date(value);
+  return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+}
+
+export function formatYAxis(value: number): string {
+  if (value >= 1000) {
+    return `${(value / 1000).toFixed(1)}K`;
+  }
+  return value.toFixed(0);
+}
+
+// Format tooltip value with currency
+export function formatTooltipValue(value: number, name: string): [string, string] {
+  return [`LKR ${value.toFixed(2)}`, name];
 }

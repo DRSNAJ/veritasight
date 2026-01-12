@@ -9,25 +9,46 @@ datasource db {
 
 // READ-ONLY: Existing table - do not modify via Prisma migrations
 model ticker_raw_data {
-  id               Int       @id @default(autoincrement())
-  timecreated      DateTime?
-  ticker_id        String?
-  symbol           String?
-  name             String?
-  isin             String?
-  lasttradedprice  Decimal?
-  previousclose    Decimal?
-  change           Decimal?
-  changepercentage Decimal?
-  marketcap        Decimal?
-  wtdhiprice       Decimal?
-  mtdhiprice       Decimal?
-  ytdhiprice       Decimal?
-  wtdlowprice      Decimal?
-  mtdlowprice      Decimal?
-  ytdlowprice      Decimal?
-  tdysharevolume   BigInt?
-  wtdturnover      Decimal?
+  id                     Int       @id @default(autoincrement())
+  timecreated            DateTime?
+  ticker_id              String?
+  symbol                 String?
+  name                   String?
+  issuedate              DateTime?
+  quantityissued         BigInt?
+  parvalue               Decimal?  @db.Decimal(18, 4)
+  lasttradedprice        Decimal?  @db.Decimal(18, 4)
+  wtdhiprice             Decimal?  @db.Decimal(18, 4)
+  mtdhiprice             Decimal?  @db.Decimal(18, 4)
+  ytdhiprice             Decimal?  @db.Decimal(18, 4)
+  p12hiprice             Decimal?  @db.Decimal(18, 4)
+  allhiprice             Decimal?  @db.Decimal(18, 4)
+  alllowprice            Decimal?  @db.Decimal(18, 4)
+  wtdlowprice            Decimal?  @db.Decimal(18, 4)
+  mtdlowprice            Decimal?  @db.Decimal(18, 4)
+  ytdlowprice            Decimal?  @db.Decimal(18, 4)
+  p12lowprice            Decimal?  @db.Decimal(18, 4)
+  tdysharevolume         BigInt?
+  wdysharevolume         BigInt?
+  mtdsharevolume         BigInt?
+  ytdsharevolume         BigInt?
+  p12sharevolume         BigInt?
+  tdytradevolume         BigInt?
+  tdyturnover            Decimal?  @db.Decimal(20, 4)
+  wtdturnover            Decimal?  @db.Decimal(20, 4)
+  mtdturnover            Decimal?  @db.Decimal(20, 4)
+  ytdturnover            Decimal?  @db.Decimal(20, 4)
+  previousclose          Decimal?  @db.Decimal(18, 4)
+  hitrade                Decimal?  @db.Decimal(18, 4)
+  lowtrade               Decimal?  @db.Decimal(18, 4)
+  closingprice           Decimal?  @db.Decimal(18, 4)
+  marketcap              Decimal?  @db.Decimal(22, 4)
+  marketcappercentage    Decimal?  @db.Decimal(7, 4)
+  change                 Decimal?  @db.Decimal(18, 4)
+  changepercentage       Decimal?  @db.Decimal(7, 4)
+  symbolindexsharevolume BigInt?
+  isin                   String?
+  sharesHeld             Int?
 
   @@map("ticker_raw_data")
 }
@@ -37,13 +58,14 @@ model index_raw_data {
   id          Int       @id @default(autoincrement())
   ticker_id   String?
   ticker      String?
-  value       Decimal?
-  change      Decimal?
-  percentage  Decimal?
-  highvalue   Decimal?
-  lowvalue    Decimal?
+  value       Decimal?  @db.Decimal(18, 4)
+  lowvalue    Decimal?  @db.Decimal(18, 4)
+  highvalue   Decimal?  @db.Decimal(18, 4)
+  change      Decimal?  @db.Decimal(18, 4)
+  percentage  Decimal?  @db.Decimal(7, 4)
+  sectorid    String?
   timestamp   DateTime?
-  timecreated DateTime? @map("timeCreated")
+  timeCreated DateTime? @map("timeCreated")
 
   @@map("index_raw_data")
 }

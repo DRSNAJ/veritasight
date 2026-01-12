@@ -29,11 +29,13 @@ export async function GET(request: Request) {
 
     if (from) {
       params.push(from);
-      dateFilter += ` AND timecreated >= $${params.length}::timestamp`;
+      // $1 is used for symbols array, so date params start at $2
+      dateFilter += ` AND timecreated >= $${params.length + 1}::timestamp`;
     }
     if (to) {
       params.push(to);
-      dateFilter += ` AND timecreated <= $${params.length}::timestamp`;
+      // $1 is used for symbols array, so date params start at $2
+      dateFilter += ` AND timecreated <= $${params.length + 1}::timestamp`;
     }
 
     // Query historical data

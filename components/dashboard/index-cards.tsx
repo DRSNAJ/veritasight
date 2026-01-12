@@ -9,8 +9,8 @@ interface IndexCardsProps {
 }
 
 export function IndexCards({ indices }: IndexCardsProps) {
-  const aspi = indices.find((i) => i.ticker === "ASPI");
-  const spsl20 = indices.find((i) => i.ticker === "S&P SL20");
+  const aspi = indices.find((i) => i.ticker === "aspi");
+  const spsl20 = indices.find((i) => i.ticker === "sl20");
 
   return (
     <div className="flex items-center gap-8 text-text-secondary">
